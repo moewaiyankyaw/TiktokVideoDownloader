@@ -3,7 +3,7 @@ import re
 import logging
 import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 from io import BytesIO
 from flask import Flask, jsonify
 import threading
@@ -21,19 +21,19 @@ TIKTOK_URL_PATTERN = r'https?://(?:vm|vt|www)\.tiktok\.com/\S+|https?://tiktok\.
 
 # Burmese language messages
 BURMESE_MESSAGES = {
-    "welcome": "ဟယ်လို! ကျွန်တော်က TikTok ဗီဒီယိုဒေါင်းလုဒ်ဆွဲပေးတဲ့ bot ပါ။",
+    "welcome": "ဟယ်လို! ကျွန်တော်က TikTok ဗီဒီယိုဒေါင်း�လုဒ်ဆွဲပေးတဲ့ bot ပါ။",
     "help": (
         "ဒီ bot ကိုဘယ်လိုသုံးမလဲ:\n\n"
         "1. ကျွန်တော့်ကို TikTok link တစ်ခုပေးပါ\n"
         "2. ဒါမှမဟုတ် group ထဲထည့်ပြီး TikTok link တွေကိုအလိုအလျောက်လုပ်ပေးမယ်\n\n"
-        "ကျွန်တော်က TikTok watermark မပါတဲ့ဗီဒီယိုကိုဒေါင်းလုဒ်ဆွဲပေးပါမယ်!"
+        "ကျွန်တော်က TikTok watermark မပါတဲ့ဗီဒီယိုကိုဒေါင်း�လုဒ်ဆွဲပေးပါမယ်!"
     ),
     "processing": "🔄 TikTok ဗီဒီယိုကိုလုပ်ဆောင်နေပါတယ်...",
     "success": "✅ ဗီဒီယိုအောင်မြင်စွာဒေါင်းလုဒ်ဆွဲပြီးပါပြီ!",
-    "error": "❌ ဗီဒီယိုဒေါင်းလုဒ်ဆွဲရန်မအောင်မြင်ပါ။ link မှားယွင်းနေနိုင်သည် သို့မဟုတ် service ခဏလုံးပျက်နေနိုင်သည်။",
+    "error": "❌ ဗီဒီယိုဒေါင်းလုဒ်ဆွဲရန်မအောင်မြင်ပါ။ link မှားယွင်း�နေနိုင်သည် သို့မဟုတ် service ခဏလုံးပျက်�နေနိုင်သည်။",
     "caption": "ဒါကတော့ TikTok watermark မပါတဲ့ဗီဒီယိုပါ!",
     "api_error": "❌ ဗီဒီယိုဒေါင်းလုဒ်ဆွဲရန်မအောင်မြင်ပါ။ API ပြဿနာရှိနေနိုင်သည်။",
-    "general_error": "❌ ဗီဒီယိုလုပ်ဆောင်ရာတွင်အမှားတစ်ခုဖြစ်ပွားခဲ့သည်။",
+    "general_error": "❌ ဗီဒီယိုလုပ်ဆောင်�ရာတွင်အမှားတစ်ခုဖြစ်ပွားခဲ့သည်။",
     "developer": "Bot Developer - @M69431",
     "commands_title": "📋 Available Commands:",
     "how_to_use": "📖 How to Use",
@@ -167,6 +167,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await start_command_callback(query)
     elif query.data == "example":
         await example_callback(query)
+    elif query.data == "rate":
+        await query.message.reply_text("⭐ Thank you for using this bot!")
 
 async def help_command_callback(query):
     """Handle help button callback"""
