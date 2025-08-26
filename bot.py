@@ -22,6 +22,23 @@ BOT_TOKEN = os.environ.get('BOT_TOKEN', "8402815013:AAFr3DwTxkN6B2w90KMKBAaVETCC
 # TikTok URL pattern for detection
 TIKTOK_URL_PATTERN = r'https?://(?:vm|vt|www)\.tiktok\.com/\S+|https?://tiktok\.com/\S+'
 
+# Burmese language messages
+BURMESE_MESSAGES = {
+    "welcome": "ဟယ်လို! ကျွန်တော်က TikTok ဗီဒီယိုဒေါင်းလုဒ်ဆွဲပေးတဲ့ bot ပါ။",
+    "help": (
+        "ဒီ bot ကိုဘယ်လိုသုံးမလဲ:\n\n"
+        "1. ကျွန်တော့်ကို TikTok link တစ်ခုပေးပါ\n"
+        "2. ဒါမှမဟုတ် group ထဲထည့်ပြီး TikTok link တွေကိုအလိုအလျောက်လုပ်ပေးမယ်\n\n"
+        "ကျွန်တော်က TikTok watermark မပါတဲ့ဗီဒီယိုကိုဒေါင်းလုဒ်ဆွဲပေးပါမယ်!"
+    ),
+    "processing": "🔄 TikTok ဗီဒီယိုကိုလုပ်ဆောင်နေပါတယ်...",
+    "success": "✅ ဗီဒီယိုအောင်မြင်စွာဒေါင်းလုဒ်ဆွဲပြီးပါပြီ!",
+    "error": "❌ ဗီဒီယိုဒေါင်းလုဒ်ဆွဲရန်မအောင်မြင်ပါ။ link မှားယွင်းနေနိုင်သည် သို့မဟုတ် service ခဏလုံးပျက်နေနိုင်သည်။",
+    "caption": "ဒါကတော့ TikTok watermark မပါတဲ့ဗီဒီယိုပါ! \n\n (ယခု Bot ကို ဖန်တီးပေးထားသူမှာ - @M69431 ဖြစ်ပါသည်)",
+    "api_error": "❌ ဗီဒီယိုဒေါင်းလုဒ်ဆွဲရန်မအောင်မြင်ပါ။ API ပြဿနာရှိနေနိုင်သည်။",
+    "general_error": "❌ ဗီဒီယိုလုပ်ဆောင်ရာတွင်အမှားတစ်ခုဖြစ်ပွားခဲ့သည်။"
+}
+
 # Flask app for health checks
 app = Flask(__name__)
 
@@ -29,13 +46,21 @@ app = Flask(__name__)
 def health_check():
     return jsonify({
         "status": "healthy", 
-        "service": "TikTok Downloader Bot",
+        "service": "TikTok Downloader Bot (Burmese)",
+        "language": "myanmar",
         "timestamp": time.time()
     })
 
 @app.route('/health')
 def health():
-    return jsonify({"status": "ok"})
+    return jsonify({"status": "ok", "language": "burmese"})
+
+@app.route('/language')
+def language_info():
+    return jsonify({
+        "language": "burmese",
+        "messages": list(BURMESE_MESSAGES.keys())
+    })
 
 def run_flask():
     """Run Flask server for health checks"""
@@ -44,20 +69,15 @@ def run_flask():
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send a message when the command /start is issued."""
-    await update.message.reply_text(
-        "Hi! I'm a TikTok video downloader bot. "
-        "I can remove watermarks from TikTok videos. "
-        "Just send me a TikTok link or add me to a group and I'll process any TikTok links I find!"
-    )
+    await update.message.reply_text(BURMESE_MESSAGES["welcome"])
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send a message when the command /help is issued."""
-    await update.message.reply_text(
-        "How to use this bot:\n\n"
-        "1. Send me a TikTok link directly\n"
-        "2. Or add me to a group and I'll automatically process TikTok links\n\n"
-        "I'll download the video without the TikTok watermark and send it back to you!"
-    )
+    await update.message.reply_text(BURMESE_MESSAGES["help"])
+
+async def language_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show language information."""
+    await update.message.reply_text("ဒီ bot က မြန်မာဘာသာစကားကိုသုံးထားပါတယ်။")
 
 def extract_tiktok_urls(text):
     """Extract TikTok URLs from text"""
@@ -130,8 +150,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Process each TikTok URL found
     for url in tiktok_urls:
-        # Send a "processing" message
-        processing_msg = await update.message.reply_text("🔄 Processing TikTok video...")
+        # Send a "processing" message in Burmese
+        processing_msg = await update.message.reply_text(BURMESE_MESSAGES["processing"])
         
         try:
             # Download the video without watermark
@@ -142,21 +162,21 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 video_file = BytesIO(video_data)
                 video_file.name = "tiktok_no_watermark.mp4"
                 
-                # Send the video back to the user
+                # Send the video back to the user with Burmese caption
                 await update.message.reply_video(
                     video=video_file,
-                    caption="Here's your TikTok video without watermark!",
+                    caption=BURMESE_MESSAGES["caption"],
                     supports_streaming=True
                 )
                 
-                # Edit the processing message to indicate success
-                await processing_msg.edit_text("✅ Video processed successfully!")
+                # Edit the processing message to indicate success in Burmese
+                await processing_msg.edit_text(BURMESE_MESSAGES["success"])
             else:
-                await processing_msg.edit_text("❌ Failed to download the video. The API might be down or blocked.")
+                await processing_msg.edit_text(BURMESE_MESSAGES["api_error"])
                 
         except Exception as e:
             logger.error(f"Error processing TikTok video: {e}")
-            await processing_msg.edit_text("❌ An error occurred while processing the video.")
+            await processing_msg.edit_text(BURMESE_MESSAGES["general_error"])
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Log errors caused by Updates."""
@@ -168,7 +188,7 @@ def main():
     flask_thread = threading.Thread(target=run_flask, daemon=True)
     flask_thread.start()
     
-    logger.info("Starting Telegram Bot...")
+    logger.info("Starting Telegram Bot (Burmese)...")
     
     # Create the Application
     application = Application.builder().token(BOT_TOKEN).build()
@@ -176,11 +196,12 @@ def main():
     # Add handlers
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("language", language_command))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     application.add_error_handler(error_handler)
 
     # Start the Bot
-    logger.info("Bot is starting...")
+    logger.info("Bot is starting in Burmese language...")
     application.run_polling(
         drop_pending_updates=True,
         allowed_updates=Update.ALL_TYPES
