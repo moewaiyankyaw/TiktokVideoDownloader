@@ -2,19 +2,16 @@ import requests
 import re
 import logging
 import os
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from io import BytesIO
 from flask import Flask, jsonify
 import threading
 import time
 
-# Configure logging
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
+# Disable all logging
+logging.disable(logging.CRITICAL)
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 # Your Telegram Bot Token
 BOT_TOKEN = os.environ.get('BOT_TOKEN', "8402815013:AAFr3DwTxkN6B2w90KMKBAaVETCCjns0hgM")
@@ -34,9 +31,14 @@ BURMESE_MESSAGES = {
     "processing": "🔄 TikTok ဗီဒီယိုကိုလုပ်ဆောင်နေပါတယ်...",
     "success": "✅ ဗီဒီယိုအောင်မြင်စွာဒေါင်းလုဒ်ဆွဲပြီးပါပြီ!",
     "error": "❌ ဗီဒီယိုဒေါင်းလုဒ်ဆွဲရန်မအောင်မြင်ပါ။ link မှားယွင်းနေနိုင်သည် သို့မဟုတ် service ခဏလုံးပျက်နေနိုင်သည်။",
-    "caption": "ဒါကတော့ TikTok watermark မပါတဲ့ဗီဒီယိုပါ! \n\n (ယခု Bot ကို ဖန်တီးပေးထားသူမှာ - @M69431 ဖြစ်ပါသည်)",
+    "caption": "ဒါကတော့ TikTok watermark မပါတဲ့ဗီဒီယိုပါ!",
     "api_error": "❌ ဗီဒီယိုဒေါင်းလုဒ်ဆွဲရန်မအောင်မြင်ပါ။ API ပြဿနာရှိနေနိုင်သည်။",
-    "general_error": "❌ ဗီဒီယိုလုပ်ဆောင်ရာတွင်အမှားတစ်ခုဖြစ်ပွားခဲ့သည်။"
+    "general_error": "❌ ဗီဒီယိုလုပ်ဆောင်ရာတွင်အမှားတစ်ခုဖြစ်ပွားခဲ့သည်။",
+    "developer": "Bot Developer - @M69431",
+    "commands_title": "📋 Available Commands:",
+    "how_to_use": "📖 How to Use",
+    "support": "💬 Support",
+    "download_example": "⬇️ Download Example"
 }
 
 # Flask app for health checks
@@ -48,6 +50,7 @@ def health_check():
         "status": "healthy", 
         "service": "TikTok Downloader Bot (Burmese)",
         "language": "myanmar",
+        "developer": "@M69431",
         "timestamp": time.time()
     })
 
@@ -59,7 +62,15 @@ def health():
 def language_info():
     return jsonify({
         "language": "burmese",
-        "messages": list(BURMESE_MESSAGES.keys())
+        "developer": "@M69431"
+    })
+
+@app.route('/developer')
+def developer_info():
+    return jsonify({
+        "developer": "@M69431",
+        "bot": "TikTok Video Downloader",
+        "language": "Burmese"
     })
 
 def run_flask():
@@ -67,17 +78,161 @@ def run_flask():
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
 
+def get_welcome_keyboard():
+    """Create inline keyboard for welcome message"""
+    keyboard = [
+        [InlineKeyboardButton(BURMESE_MESSAGES["how_to_use"], callback_data="help")],
+        [InlineKeyboardButton(BURMESE_MESSAGES["support"], url="https://t.me/M69431")],
+        [InlineKeyboardButton(BURMESE_MESSAGES["download_example"], callback_data="example")]
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send a message when the command /start is issued."""
-    await update.message.reply_text(BURMESE_MESSAGES["welcome"])
+    welcome_text = f"""
+{BURMESE_MESSAGES['welcome']}
+
+{BURMESE_MESSAGES['commands_title']}
+• /start - Bot ကိုစတင်ရန်
+• /help - အကူအညီရယူရန်
+• /developer - Developer နှင့်ချိတ်ဆက်ရန်
+
+{BURMESE_MESSAGES['developer']}
+    """
+    
+    await update.message.reply_text(
+        welcome_text,
+        reply_markup=get_welcome_keyboard()
+    )
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send a message when the command /help is issued."""
-    await update.message.reply_text(BURMESE_MESSAGES["help"])
+    help_text = f"""
+{BURMESE_MESSAGES['help']}
 
-async def language_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Show language information."""
-    await update.message.reply_text("ဒီ bot က မြန်မာဘာသာစကားကိုသုံးထားပါတယ်။")
+📝 သုံးစွဲနည်း:
+1. TikTok video link ကိုကူးယူပါ
+2. ဒီ bot ကိုပို့ပေးပါ
+3. Watermark မပါတဲ့ video ကိုရယူပါ
+
+{BURMESE_MESSAGES['developer']}
+    """
+    
+    keyboard = [
+        [InlineKeyboardButton("💬 Developer နှင့်ဆက်သွယ်ရန်", url="https://t.me/M69431")],
+        [InlineKeyboardButton("⬅️ Back to Start", callback_data="start")]
+    ]
+    
+    await update.message.reply_text(
+        help_text,
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+async def developer_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show developer information."""
+    developer_text = f"""
+👨‍💻 Bot Developer Information:
+
+{BURMESE_MESSAGES['developer']}
+
+📧 Telegram: @M69431
+🤖 This bot: @{(await context.bot.get_me()).username}
+
+💡 Features:
+• TikTok video download without watermark
+• Fast and reliable
+• Burmese language support
+• Free to use
+    """
+    
+    keyboard = [
+        [InlineKeyboardButton("📩 Contact Developer", url="https://t.me/M69431")],
+        [InlineKeyboardButton("⭐ Rate This Bot", callback_data="rate")],
+        [InlineKeyboardButton("⬅️ Back to Start", callback_data="start")]
+    ]
+    
+    await update.message.reply_text(
+        developer_text,
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle inline keyboard button callbacks."""
+    query = update.callback_query
+    await query.answer()
+    
+    if query.data == "help":
+        await help_command_callback(query)
+    elif query.data == "start":
+        await start_command_callback(query)
+    elif query.data == "example":
+        await example_callback(query)
+
+async def help_command_callback(query):
+    """Handle help button callback"""
+    help_text = f"""
+{BURMESE_MESSAGES['help']}
+
+📝 သုံးစွဲနည်း:
+1. TikTok video link ကိုကူးယူပါ
+2. ဒီ bot ကိုပို့ပေးပါ
+3. Watermark မပါတဲ့ video ကိုရယူပါ
+
+{BURMESE_MESSAGES['developer']}
+    """
+    
+    keyboard = [
+        [InlineKeyboardButton("💬 Developer နှင့်ဆက်သွယ်ရန်", url="https://t.me/M69431")],
+        [InlineKeyboardButton("⬅️ Back to Start", callback_data="start")]
+    ]
+    
+    await query.edit_message_text(
+        help_text,
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+async def start_command_callback(query):
+    """Handle start button callback"""
+    welcome_text = f"""
+{BURMESE_MESSAGES['welcome']}
+
+{BURMESE_MESSAGES['commands_title']}
+• /start - Bot ကိုစတင်ရန်
+• /help - အကူအညီရယူရန်
+• /developer - Developer နှင့်ချိတ်ဆက်ရန်
+
+{BURMESE_MESSAGES['developer']}
+    """
+    
+    await query.edit_message_text(
+        welcome_text,
+        reply_markup=get_welcome_keyboard()
+    )
+
+async def example_callback(query):
+    """Handle example button callback"""
+    example_text = """
+📥 Download Example:
+
+ဒီလို TikTok link တစ်ခုပို့ပေးပါ:
+https://vt.tiktok.com/ZSAy3rPhy/
+
+ဒါမှမဟုတ်:
+https://www.tiktok.com/@username/video/1234567890
+
+ကျွန်တော်က watermark မပါတဲ့ video ကိုဒေါင်းလုဒ်ဆွဲပေးပါမယ်!
+    """
+    
+    keyboard = [
+        [InlineKeyboardButton("📖 Full Guide", callback_data="help")],
+        [InlineKeyboardButton("💬 Support", url="https://t.me/M69431")],
+        [InlineKeyboardButton("⬅️ Back to Start", callback_data="start")]
+    ]
+    
+    await query.edit_message_text(
+        example_text,
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
 
 def extract_tiktok_urls(text):
     """Extract TikTok URLs from text"""
@@ -95,17 +250,13 @@ def download_tiktok_no_watermark(url):
             full_url = response.url
         else:
             full_url = url
-        
-        logger.info(f"Resolved URL: {full_url}")
-        
+
         # Extract video ID
         video_id_match = re.search(r'/video/(\d+)', full_url)
         if not video_id_match:
-            logger.error("Could not extract video ID from URL")
             return None
         
         video_id = video_id_match.group(1)
-        logger.info(f"Video ID: {video_id}")
         
         # Use tikwm API
         tikwm_api = f"https://tikwm.com/api/?url={full_url}&hd=1"
@@ -132,11 +283,9 @@ def download_tiktok_no_watermark(url):
                 if video_response.status_code == 200:
                     return video_response.content
         
-        logger.error("Download failed. The API might be down or blocked.")
         return None
             
-    except Exception as e:
-        logger.error(f"Error in download_tiktok_no_watermark: {str(e)}")
+    except Exception:
         return None
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -165,7 +314,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 # Send the video back to the user with Burmese caption
                 await update.message.reply_video(
                     video=video_file,
-                    caption=BURMESE_MESSAGES["caption"],
+                    caption=f"{BURMESE_MESSAGES['caption']}\n\n{BURMESE_MESSAGES['developer']}",
                     supports_streaming=True
                 )
                 
@@ -174,13 +323,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 await processing_msg.edit_text(BURMESE_MESSAGES["api_error"])
                 
-        except Exception as e:
-            logger.error(f"Error processing TikTok video: {e}")
+        except Exception:
             await processing_msg.edit_text(BURMESE_MESSAGES["general_error"])
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Log errors caused by Updates."""
-    logger.error(f"Exception while handling an update: {context.error}")
+    """Silent error handler - no logging"""
+    pass
 
 def main():
     """Start the bot and web server."""
@@ -188,23 +336,25 @@ def main():
     flask_thread = threading.Thread(target=run_flask, daemon=True)
     flask_thread.start()
     
-    logger.info("Starting Telegram Bot (Burmese)...")
-    
     # Create the Application
     application = Application.builder().token(BOT_TOKEN).build()
 
     # Add handlers
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(CommandHandler("language", language_command))
+    application.add_handler(CommandHandler("developer", developer_command))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    application.add_handler(CallbackQueryHandler(button_callback))
     application.add_error_handler(error_handler)
 
-    # Start the Bot
-    logger.info("Bot is starting in Burmese language...")
+    # Start the Bot silently
     application.run_polling(
         drop_pending_updates=True,
-        allowed_updates=Update.ALL_TYPES
+        allowed_updates=Update.ALL_TYPES,
+        read_timeout=30,
+        write_timeout=30,
+        connect_timeout=30,
+        pool_timeout=30
     )
 
 if __name__ == "__main__":
