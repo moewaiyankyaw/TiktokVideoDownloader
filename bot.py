@@ -1,9 +1,13 @@
 import requests
 import re
 import logging
+import os
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from io import BytesIO
+from flask import Flask, jsonify
+import threading
+import time
 
 # Configure logging
 logging.basicConfig(
@@ -13,10 +17,30 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Your Telegram Bot Token
-BOT_TOKEN = "8402815013:AAFr3DwTxkN6B2w90KMKBAaVETCCjns0hgM"
+BOT_TOKEN = os.environ.get('BOT_TOKEN', "8402815013:AAFr3DwTxkN6B2w90KMKBAaVETCCjns0hgM")
 
 # TikTok URL pattern for detection
 TIKTOK_URL_PATTERN = r'https?://(?:vm|vt|www)\.tiktok\.com/\S+|https?://tiktok\.com/\S+'
+
+# Flask app for health checks
+app = Flask(__name__)
+
+@app.route('/')
+def health_check():
+    return jsonify({
+        "status": "healthy", 
+        "service": "TikTok Downloader Bot",
+        "timestamp": time.time()
+    })
+
+@app.route('/health')
+def health():
+    return jsonify({"status": "ok"})
+
+def run_flask():
+    """Run Flask server for health checks"""
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send a message when the command /start is issued."""
@@ -139,7 +163,13 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.error(f"Exception while handling an update: {context.error}")
 
 def main():
-    """Start the bot."""
+    """Start the bot and web server."""
+    # Start Flask server in a separate thread for health checks
+    flask_thread = threading.Thread(target=run_flask, daemon=True)
+    flask_thread.start()
+    
+    logger.info("Starting Telegram Bot...")
+    
     # Create the Application
     application = Application.builder().token(BOT_TOKEN).build()
 
@@ -151,7 +181,10 @@ def main():
 
     # Start the Bot
     logger.info("Bot is starting...")
-    application.run_polling()
+    application.run_polling(
+        drop_pending_updates=True,
+        allowed_updates=Update.ALL_TYPES
+    )
 
 if __name__ == "__main__":
     main()
